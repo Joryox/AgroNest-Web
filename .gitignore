@@ -1,6 +1,5 @@
 # ─── Secrets / Environment ────────────────────────────────────────────────────
 .env
-.env.*
 .env.local
 .env.*.local
 # .env.example IS committed (documents required vars without real values)
