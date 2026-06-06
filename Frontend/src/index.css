@@ -1,0 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+/* Enable class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* AgroNest green palette */
+  --color-primary-50:  #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+
+  /* Harvest gold accent */
+  --color-accent-50:  #fefce8;
+  --color-accent-100: #fef9c3;
+  --color-accent-200: #fef08a;
+  --color-accent-300: #fde047;
+  --color-accent-400: #facc15;
+  --color-accent-500: #eab308;
+  --color-accent-600: #ca8a04;
+  --color-accent-700: #a16207;
+  --color-accent-800: #854d0e;
+  --color-accent-900: #713f12;
+
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Surface tokens — light mode defaults */
+:root {
+  --color-surface: #ffffff;
+  --color-surface-raised: #f9fafb;
+  --color-surface-overlay: #f3f4f6;
+  --color-text-primary: #111827;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --button-ripple-color: oklch(0.145 0 0 / 0.3);
+}
+
+/* Dark mode surface overrides */
+.dark {
+  --color-surface: #0f172a;
+  --color-surface-raised: #1e293b;
+  --color-surface-overlay: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-border: #334155;
+  --button-ripple-color: oklch(0.985 0 0 / 0.5);
+}
+
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+button, a, input, select, textarea {
+  transition-duration: 100ms;
+}
+
+/* =============================================
+   ACCESIBILIDAD — Font sizes
+   ============================================= */
+html.font-size-sm { font-size: 14px; }
+html.font-size-lg { font-size: 18px; }
+html.font-size-xl { font-size: 20px; }
+
+/* =============================================
+   ACCESIBILIDAD — Alto contraste
+   ============================================= */
+.high-contrast {
+  --color-primary-600: #004d16;
+  --color-primary-700: #003d12;
+  --color-text-primary: #000000;
+  --color-text-muted: #333333;
+  --color-border: #000000;
+}
+.dark.high-contrast {
+  --color-primary-600: #4ade80;
+  --color-primary-700: #86efac;
+  --color-text-primary: #ffffff;
+  --color-text-muted: #e5e7eb;
+  --color-border: #ffffff;
+}
+
+/* =============================================
+   ACCESIBILIDAD — Movimiento reducido
+   ============================================= */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* =============================================
+   ACCESIBILIDAD — Focus mejorado
+   ============================================= */
+.focus-enhanced *:focus-visible {
+  outline: 3px solid #16a34a !important;
+  outline-offset: 3px !important;
+  border-radius: 4px;
+}
+
+/* =============================================
+   ANIMACIONES DE ENTRADA
+   ============================================= */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(100%); }
+}
+@keyframes button-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+@keyframes progress-indeterminate {
+  0%   { margin-left: -40%; width: 40%; }
+  50%  { margin-left: 30%;  width: 70%; }
+  100% { margin-left: 110%; width: 40%; }
+}
+
+/* =============================================
+   RIPPLE BUTTON
+   ============================================= */
+@keyframes js-ripple-animation {
+  0%   { transform: scale(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+.animate-js-ripple-effect {
+  animation: js-ripple-animation var(--ripple-duration) ease-out forwards;
+}
+
+.animate-fade-in          { animation: fade-in 250ms ease forwards; }
+.animate-slide-up         { animation: slide-up 300ms ease forwards; }
+.animate-slide-in-right   { animation: slide-in-right 300ms ease forwards; }
+.animate-slide-out-right  { animation: slide-out-right 300ms ease forwards; }
+.animate-button-pulse     { animation: button-pulse 1.2s ease-in-out infinite; }
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
