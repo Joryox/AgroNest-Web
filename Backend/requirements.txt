@@ -28,4 +28,5 @@ watchfiles>=1.1.0
 pytest>=8.4.2
 itsdangerous>=2.2.0
 web3>=7.14.1
-google-genai>=2.7.0tzdata>=2024.1
+google-genai>=2.7.0
+tzdata>=2024.1

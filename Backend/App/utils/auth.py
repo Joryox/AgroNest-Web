@@ -1,6 +1,7 @@
 """ Authentication utilities """
 
 # python libraries
+import asyncio
 import jwt  # pip3 install pyjwt
 from fastapi import Depends, HTTPException, status  # , Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2AuthorizationCodeBearer  # , OAuth2PasswordRequestForm
@@ -39,7 +40,8 @@ settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
 User_Pydantic = pydantic_model_creator(Usuario, name='User')
 
-redis_client = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db)
+redis_client = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db,
+                                  socket_connect_timeout=1, socket_timeout=1)
 
 # authenticate_user function to return if a user is valid or not
 async def authenticate_user(username: str, password: str):
@@ -115,10 +117,14 @@ async def get_endpoints(user: Usuario):
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         try:
-            revoked = redis_client.get(token)
+            revoked = await asyncio.wait_for(
+                asyncio.to_thread(redis_client.get, token), timeout=2.0
+            )
             if revoked is not None:
                 raise ValueError({"status": 498, "detail": "Sesion expirada, inicie sesion nuevamente."})
-        except redis.exceptions.ConnectionError:
+        except ValueError:
+            raise
+        except Exception:
             pass  # Redis unavailable — skip revocation check, rely on JWT expiration
 
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.algorithm])
@@ -126,11 +132,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         user = await Usuario.get(id=payload.get('id'))
 
         try:
-            raw = redis_client.hget("valid_tokens", f"{payload.get('id')}")
+            raw = await asyncio.wait_for(
+                asyncio.to_thread(redis_client.hget, "valid_tokens", f"{payload.get('id')}"),
+                timeout=2.0,
+            )
             valid_token = raw.decode('utf-8') if raw else None
             if valid_token is not None and valid_token != token:
                 raise ValueError({"status": 498, "detail": "Sesion expirada, inicie sesion nuevamente."})
-        except redis.exceptions.ConnectionError:
+        except ValueError:
+            raise
+        except Exception:
             pass  # Redis unavailable — skip single-session check, rely on JWT signature
 
         del user.password_hash
@@ -170,7 +181,10 @@ async def authorization(token: str = Depends(oauth2_scheme)):
 
 async def tokenOut(token: str):
     try:
-        redis_client.set(token, "revoked", ex=settings.redis_exp)
-    except redis.exceptions.ConnectionError:
+        await asyncio.wait_for(
+            asyncio.to_thread(redis_client.set, token, "revoked", ex=settings.redis_exp),
+            timeout=2.0,
+        )
+    except Exception:
         logger.warning("Redis no disponible — token no registrado como revocado (expirará por TTL JWT)")
     return {"detail": "Token revoked"}

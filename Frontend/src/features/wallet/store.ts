@@ -3,6 +3,12 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { useToastStore } from '@/store/toastStore'
 import type { WalletState } from './types'
 
+declare global {
+  interface Window {
+    ethereum?: any
+  }
+}
+
 export const useWalletStore = create<WalletState>()(
   persist(
     (set) => ({
@@ -10,11 +16,24 @@ export const useWalletStore = create<WalletState>()(
       isConnecting: false,
 
       connectMetaMask: async () => {
+        if (typeof window.ethereum === 'undefined') {
+          useToastStore.getState().addToast({ type: 'error', message: 'MetaMask no detectado. Instala la extensión.' })
+          return
+        }
         set({ isConnecting: true })
-        setTimeout(() => {
-          set({ metaMaskAddress: '0x82f0B9C9B4Bc5b13d28532454508933454B4B9A7', isConnecting: false })
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[]
+          if (!accounts.length) throw new Error('Sin cuentas')
+          set({ metaMaskAddress: accounts[0], isConnecting: false })
           useToastStore.getState().addToast({ type: 'success', message: 'MetaMask conectado exitosamente.' })
-        }, 800)
+          window.ethereum.on('accountsChanged', (accs: string[]) => {
+            set({ metaMaskAddress: accs.length ? accs[0] : null })
+          })
+          window.ethereum.on('chainChanged', () => window.location.reload())
+        } catch {
+          set({ isConnecting: false })
+          useToastStore.getState().addToast({ type: 'error', message: 'Error al conectar MetaMask.' })
+        }
       },
 
       disconnectMetaMask: () => {

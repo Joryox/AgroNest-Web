@@ -56,15 +56,58 @@ async def abrir_boveda(
     funding_goal = int(cosecha.capital_requerido * 10 ** 6)
     deadline_ts  = int(fecha_limite.timestamp())
 
-    import random
-    bcrop_address = f"0x{''.join(random.choices('0123456789abcdef', k=40))}"
-    vault_address = f"0x{''.join(random.choices('0123456789abcdef', k=40))}"
-    logger.info(f"{logger_message} bCROPToken desplegado (MOCK) en {bcrop_address}")
-    logger.info(f"{logger_message} CropVault desplegado (MOCK) en {vault_address}")
+    from web3 import Web3
+
+    bcrop_artifact = w3.load_artifact("bCROPToken.json")
+    vault_artifact = w3.load_artifact("CropVault.json")
+
+    vault_address = await w3.deploy_contract(
+        vault_artifact["abi"], vault_artifact["bytecode"],
+        w3.api_account.address,
+        w3.usdc_contract.address,
+        w3.crop_contract.address,
+        w3.oracle_contract.address,
+    )
+    logger.info(f"{logger_message} CropVault desplegado en {vault_address}")
+
+    bcrop_address = await w3.deploy_contract(
+        bcrop_artifact["abi"], bcrop_artifact["bytecode"],
+        w3.api_account.address,
+        vault_address,
+    )
+    logger.info(f"{logger_message} bCROPToken desplegado en {bcrop_address}")
+
+    tx_approve = await w3.send_transaction(
+        lambda: w3.crop_contract.functions.approve(
+            Web3.to_checksum_address(vault_address),
+            cosecha.nft_token_id,
+        )
+    )
+    await w3.wait_for_receipt(tx_approve)
+
+    vault = w3.get_vault_contract(vault_address)
+    tx_open = await w3.send_transaction(
+        lambda: vault.functions.openRound(
+            cosecha.nft_token_id,
+            funding_goal,
+            deadline_ts,
+            data.porcentaje_reserva,
+            data.porcentaje_rendimiento,
+            Web3.to_checksum_address(bcrop_address),
+            w3.api_account.address,
+        )
+    )
+    receipt_open = await w3.wait_for_receipt(tx_open)
+    if receipt_open.get("status") != 1:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail="openRound falló en la blockchain",
+        )
+    logger.info(f"{logger_message} openRound ejecutado, tx: {tx_open}")
 
     boveda = Boveda(
         cosecha_id=data.cosecha_id,
-        vault_id=None,                          # ya no aplica en arquitectura split
+        vault_id=None,
         vault_address=vault_address,
         bcrop_address=bcrop_address,
         meta_financiamiento=cosecha.capital_requerido,
@@ -73,7 +116,7 @@ async def abrir_boveda(
         porcentaje_rendimiento=data.porcentaje_rendimiento,
         fecha_limite=fecha_limite,
         estado="OPEN",
-        tx_hash_open=vault_address,             # usamos la address como referencia
+        tx_hash_open=tx_open,
     )
     await boveda.save()
 

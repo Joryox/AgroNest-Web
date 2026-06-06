@@ -28,11 +28,11 @@ services:
       retries: 10
 
   api:
-    build: .
+    build: ./Backend
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - ./Backend/.env
     environment:
       DB_SERVER: postgres
       REDIS_HOST: redis
@@ -43,7 +43,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./log:/app/log
+      - ./Backend/log:/app/log
 
 volumes:
   postgres_data:

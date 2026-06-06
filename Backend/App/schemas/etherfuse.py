@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from decimal import Decimal
 from datetime import datetime
+from uuid import UUID
 
 
 class IniciarOnboardingSchema(BaseModel):
@@ -17,8 +18,8 @@ class RespuestaOnboardingSchema(BaseModel):
 
 class RespuestaClienteSchema(BaseModel):
     id: int
-    customer_id: str
-    bank_account_id: Optional[str] = None
+    customer_id: UUID
+    bank_account_id: Optional[UUID] = None
     kyc_status: str
     wallet_address: Optional[str] = None
     creacion: Optional[datetime] = None

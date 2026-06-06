@@ -5,8 +5,9 @@ from decimal import Decimal
 
 
 class InvertirSchema(BaseModel):
-    cosecha_id: int
-    monto_usdc: Decimal
+    cosecha_id:      int
+    monto_usdc:      Decimal
+    investor_wallet: Optional[str] = None  # MetaMask address del inversor; None → API wallet custodial
 
     class Config:
         from_attributes = True

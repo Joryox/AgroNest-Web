@@ -33,32 +33,46 @@ async def invertir(
     if not cosecha:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Cosecha no encontrada")
 
-    boveda = await Boveda.get_or_none(cosecha_id=data.cosecha_id)
+    boveda = await Boveda.get_or_none(cosecha_id=data.cosecha_id, estado="OPEN")
     if not boveda:
-        from datetime import datetime, timedelta
-        import random
-        boveda = Boveda(
-            cosecha_id=data.cosecha_id,
-            estado="OPEN",
-            total_recaudado=0,
-            meta_financiamiento=cosecha.capital_requerido,
-            plazo_dias=30,
-            porcentaje_reserva=10,
-            porcentaje_rendimiento=8,
-            fecha_limite=datetime.utcnow() + timedelta(days=30),
-            vault_address=f"0x{''.join(random.choices('0123456789abcdef', k=40))}",
-            bcrop_address=f"0x{''.join(random.choices('0123456789abcdef', k=40))}"
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail="No existe una bóveda OPEN para esta cosecha. El agricultor debe abrirla primero.",
         )
-        await boveda.save()
+    if not boveda.vault_address:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Bóveda sin vault_address — datos inconsistentes",
+        )
 
     if data.monto_usdc <= 0:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="El monto debe ser mayor a cero")
 
-    amount_wei   = int(data.monto_usdc * 10 ** 6)
+    from web3 import Web3
+
+    amount_wei = int(data.monto_usdc * 10 ** 6)
     vault = w3.get_vault_contract(boveda.vault_address)
 
-    import random
-    tx_hash = f"0x{''.join(random.choices('0123456789abcdef', k=64))}"
+    await w3.send_transaction(
+        lambda: w3.usdc_contract.functions.approve(
+            Web3.to_checksum_address(boveda.vault_address),
+            amount_wei,
+        )
+    )
+
+    investor_wallet = data.investor_wallet or w3.api_account.address
+    tx_hash = await w3.send_transaction(
+        lambda: vault.functions.deposit(
+            amount_wei,
+            Web3.to_checksum_address(investor_wallet),
+        )
+    )
+    receipt = await w3.wait_for_receipt(tx_hash)
+    if receipt.get("status") != 1:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail="La transacción de depósito falló en la blockchain",
+        )
 
     inversion = Inversion(
         inversor_id=user.id,

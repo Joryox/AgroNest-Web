@@ -2,6 +2,7 @@
 
 # python libraries
 import ast
+import asyncio
 from passlib.hash import bcrypt
 import jwt  # pip3 install pyjwt
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form  # , Body
@@ -38,7 +39,8 @@ def get_settings():
 
 # get settings
 settings = get_settings()
-redis_client = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db)
+redis_client = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db,
+                                  socket_connect_timeout=1, socket_timeout=1)
 
 User_Pydantic = pydantic_model_creator(Usuario, name='User')
 
@@ -158,8 +160,11 @@ async def generate_token(
     refresh_token = await create_refresh_token(payload)
 
     try:
-        redis_client.hset("valid_tokens", user_obj.id, access_token)
-    except redis.exceptions.ConnectionError:
+        await asyncio.wait_for(
+            asyncio.to_thread(redis_client.hset, "valid_tokens", user_obj.id, access_token),
+            timeout=2.0,
+        )
+    except Exception:
         logger.warning("Redis no disponible — token no registrado en sesiones activas")
 
     return {
@@ -288,8 +293,11 @@ async def renew_access_token(
     access_token = await create_access_token(request, payload)
 
     try:
-        redis_client.hset("valid_tokens", payload.get("id"), access_token)
-    except redis.exceptions.ConnectionError:
+        await asyncio.wait_for(
+            asyncio.to_thread(redis_client.hset, "valid_tokens", payload.get("id"), access_token),
+            timeout=2.0,
+        )
+    except Exception:
         logger.warning("Redis no disponible — token renovado sin registrar en sesiones activas")
 
     return {

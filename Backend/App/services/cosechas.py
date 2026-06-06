@@ -26,10 +26,39 @@ async def registrar_cosecha(
     3. Extrae el tokenId del evento CropMinted
     4. Guarda la Cosecha en Postgres con los datos on-chain
     """
-    import random
-    farm_id      = str(uuid.uuid4())
-    tx_hash = f"0x{''.join(random.choices('0123456789abcdef', k=64))}"
-    token_id = random.randint(100, 9999)
+    w3 = get_web3_client()
+    w3.assert_connected()
+    if not w3.crop_contract:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Contrato AgroNestCrop no disponible — verifica CROP_CONTRACT_ADDRESS en .env",
+        )
+
+    farm_id = str(uuid.uuid4())
+    tx_hash = await w3.send_transaction(
+        lambda: w3.crop_contract.functions.mintCrop(
+            w3.api_account.address,
+            farm_id,
+            int(data.hectareas * 100),
+            data.tipo_grano,
+            int(data.rendimiento_kg),
+            int(data.capital_requerido * 10 ** 6),
+            int(data.fecha_cosecha.timestamp()),
+        )
+    )
+    receipt = await w3.wait_for_receipt(tx_hash)
+    if receipt.get("status") != 1:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail="La transacción de mint falló en la blockchain",
+        )
+    logs = w3.crop_contract.events.CropMinted().process_receipt(receipt)
+    if not logs:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail="No se encontró evento CropMinted en el receipt",
+        )
+    token_id = logs[0]["args"]["tokenId"]
 
     cosecha = Cosecha(
         farm_id=farm_id,

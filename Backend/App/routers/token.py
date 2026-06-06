@@ -39,7 +39,8 @@ def get_settings():
 
 # get settings
 settings = get_settings()
-redis_client = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db)
+redis_client = redis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=settings.redis_db,
+                                  socket_connect_timeout=1, socket_timeout=1)
 
 router = APIRouter(
     prefix="/token",
